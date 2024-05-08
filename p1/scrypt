@@ -1,0 +1,34 @@
+#!/usr/bin/python3
+import sys
+import mmap
+
+def lcg(seed):
+    x = (1103515245 * seed + 12345) % 256
+    while True:
+        yield x
+        x = (1103515245 * x + 12345) % 256
+
+def sdbm(string):
+    hash = 0
+    for char in string:
+        hash = ord(char) + (hash << 6) + (hash << 16) - hash
+    return hash
+
+seed = sys.argv[1]
+hash = sdbm(seed)
+key = lcg(hash)
+#throwaway = next(key)
+
+
+with open(sys.argv[2], mode='rb') as input:
+    with open(sys.argv[3], mode='wb') as output:
+        with mmap.mmap(input.fileno(), 0, access = mmap.ACCESS_READ) as mmObject:
+            currentchar = mmObject.read(1)
+            currentbyte = ord(currentchar)
+            while(1):
+                output.write((currentbyte ^ next(key)).to_bytes(length = 1, byteorder = 'big'))
+                currentchar = mmObject.read(1)
+                if currentchar:
+                    currentbyte = ord(currentchar)
+                else:
+                    break

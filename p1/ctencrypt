@@ -1,0 +1,73 @@
+#!/usr/bin/python3
+import math
+import sys
+
+def encryptBlock(block, sequence):
+    numRows = math.ceil(len(block) / len(sequence))
+    numCols = len(sequence)
+    cipherBlock = [[0 for i in range(numCols)] for j in range(numRows)]
+    for i in range(numRows):
+        for j in range(numCols):
+            if i * numCols + j > len(block) - 1: break
+            cipherBlock[i][j] = block[i * numCols + j]
+    cipherText = []
+    for i in range(len(sequence)):
+        for j in range(numRows):
+            if cipherBlock[j][sequence.index(i)] == 0: continue
+            cipherText.append(cipherBlock[j][sequence.index(i)])
+    #print('\n'.join(['\t'.join([str(cell) for cell in row]) for row in cipherBlock]))
+    return cipherText
+
+def main():
+    blocksize = -1
+    filepath = ''
+    key = ''
+    if sys.argv[1] == '-b':
+        blocksize = int(sys.argv[2])
+        if sys.argv[3] == '-k':
+            key = sys.argv[4]
+            if len(sys.argv) > 5:
+                filepath = sys.argv[5]
+        else:
+            print("Invalid input")
+    elif sys.argv[1] == '-k':
+        key = sys.argv[2]
+        if len(sys.argv) > 3:
+            filepath = sys.argv[3]
+    else:
+        print("Invalid input")
+
+    sequence = []
+    for i in range(len(key)):
+        pos = 0
+        for j in range(len(key)):
+            if key[i] > key[j]:
+                pos+=1
+            elif key[i] == key[j] and i > j:
+                pos+=1
+        sequence.append(pos)
+
+    if filepath:
+        file = open(filepath, "r")
+        
+        if blocksize == -1:
+            wholefile = file.read()
+            print(''.join(encryptBlock(wholefile, sequence)), end = '')
+        else:
+            currentBlock = file.read(blocksize)
+            while currentBlock:
+                print(''.join(encryptBlock(currentBlock, sequence)), end = '')
+                currentBlock = file.read(blocksize)
+        file.close()
+    else:
+        if blocksize == -1:
+            wholeinput = sys.stdin.read()
+            print(encryptBlock(wholeinput, sequence))
+        else:
+            currentBlock = sys.stdin.read(blocksize)
+            while len(currentBlock) > 0:
+                print(encryptBlock(currentBlock, sequence), end='')
+                currentBlock = sys.stdin.read(blocksize)
+
+if __name__ == "__main__":
+    main()

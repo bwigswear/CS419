@@ -1,0 +1,84 @@
+#!/usr/bin/python3
+import sys
+
+
+def lcg(seed):
+    x = (1103515245 * seed + 12345) % 256
+    while True:
+        yield x
+        x = (1103515245 * x + 12345) % 256
+
+def sdbm(string):
+    hash = 0
+    for char in string:
+        hash = ord(char) + (hash << 6) + (hash << 16) - hash
+    return hash
+
+def main():
+    seed = sys.argv[1]
+    hash = sdbm(seed)
+    key = lcg(hash)
+    iv = []
+    for i in range(16):
+        iv.append(next(key))
+    
+    input = open(sys.argv[2], mode='rb')
+    output = open(sys.argv[3], mode='wb') 
+    
+    cipherblock = input.read(16)
+    initial = True
+    tempblock = []
+    ptblock = []
+    prevblock = []
+    while cipherblock:
+        tempblock = []
+        keystream = []
+        
+        for i in range(16):
+            keystream.append(next(key))
+            
+        for i in range(16):
+            tempblock.append(cipherblock[i] ^ keystream[i])
+            
+        for i in range(15, -1, -1):
+            first = keystream[i] & 0xf
+            second = (keystream[i] >> 4) & 0xf
+            tempblock[first], tempblock[second] = tempblock[second], tempblock[first]
+            
+        if initial:
+            for i in range(16):
+                ptblock.append(tempblock[i] ^ iv[i])
+            initial = False
+        else:
+            for i in range(16):
+                ptblock.append(tempblock[i] ^ prevblock[i])
+                
+        prevblock = cipherblock
+        cipherblock = []
+        cipherblock = input.read(16)
+        
+        if len(cipherblock) == 0: 
+            #Could still fail if plaintext is written like padding
+            #Not sure how to fix that
+            padnum = ptblock[-1]
+            pop = True
+            if 0 < padnum < 16:
+                for i in range(padnum):
+                    if ptblock[15 - i] != padnum:
+                        pop = False
+                if pop:
+                    for i in range(padnum):
+                        ptblock.pop()
+        
+        output.write(bytes(ptblock))
+        ptblock = []
+        
+        if len(cipherblock) == 0:
+            break
+            
+        
+    input.close()
+    output.close()
+
+if __name__ == "__main__":
+    main()

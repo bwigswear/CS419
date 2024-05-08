@@ -1,0 +1,76 @@
+#!/usr/bin/python3
+import sys
+
+
+def lcg(seed):
+    x = (1103515245 * seed + 12345) % 256
+    while True:
+        yield x
+        x = (1103515245 * x + 12345) % 256
+
+def sdbm(string):
+    hash = 0
+    for char in string:
+        hash = ord(char) + (hash << 6) + (hash << 16) - hash
+    return hash
+
+def main():
+    seed = sys.argv[1]
+    hash = sdbm(seed)
+    key = lcg(hash)
+    iv = []
+    for i in range(16):
+        iv.append(next(key))
+    
+    input = open(sys.argv[2], mode='rb')
+    output = open(sys.argv[3], mode='wb') 
+    
+    ptblock = input.read(16)
+    initial = True
+    tempblock = []
+    cipherblock = []
+    while ptblock:
+        #print(ptblock)
+        tempblock = []
+        if len(ptblock) < 16:
+            padnum = 16 - len(ptblock)
+            ptblock = bytearray(ptblock)
+            for i in range(16 - padnum, 16):
+                ptblock.append(padnum)
+            ptblock = bytes(ptblock)
+        if initial:
+            for i in range(16):
+                tempblock.append(ptblock[i] ^ iv[i])
+            #tempblock = ptblock ^ iv
+            initial = False
+        else:
+            for i in range(16):
+                tempblock.append(ptblock[i] ^ cipherblock[i])
+            cipherblock = []
+            #tempblock = ptblock ^ cipherblock
+        
+        keystream = []
+        for i in range(16):
+            keystream.append(next(key))
+            
+        #print(bytes(tempblock))
+        
+        for i in range(16):
+            first = keystream[i] & 0xf
+            second = (keystream[i] >> 4) & 0xf
+            tempblock[first], tempblock[second] = tempblock[second], tempblock[first]
+        
+        for i in range(16):
+            cipherblock.append(tempblock[i] ^ keystream[i])
+        #cipherblock = tempblock ^ keystream
+        output.write(bytes(cipherblock))
+        ptblock = input.read(16)
+        if len(ptblock) == 0:
+            break
+        
+    input.close()
+    output.close()
+    
+
+if __name__ == "__main__":
+    main()
